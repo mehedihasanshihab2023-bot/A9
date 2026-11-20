@@ -179,6 +179,14 @@ must be provisioned securely on the server (`npm run create-admin`).
 
 ---
 
+## 🔗 Live Site & Repositories
+
+- **Live website:** _add your Vercel deployment URL here_
+- **Client repository:** _add your GitHub client repository URL here_
+- **Server repository:** _add your GitHub server repository URL here_
+
+---
+
 ## 🔗 Related
 
 - **Server repository:** Express + MongoDB API (see its README for endpoints,
