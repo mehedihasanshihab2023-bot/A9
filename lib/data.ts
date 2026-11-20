@@ -13,6 +13,8 @@ export type ServiceQuery = {
   search?: string
   category?: string
   sort?: SortOption
+  /** Admin dashboard only: include deactivated services. */
+  includeInactive?: boolean
 }
 
 export async function getServices(query: ServiceQuery = {}): Promise<Service[]> {
@@ -20,6 +22,7 @@ export async function getServices(query: ServiceQuery = {}): Promise<Service[]> 
   if (query.search?.trim()) params.set("search", query.search.trim())
   if (query.category) params.set("category", query.category)
   if (query.sort && query.sort !== "newest") params.set("sort", query.sort)
+  if (query.includeInactive) params.set("includeInactive", "true")
 
   const qs = params.toString()
   const { data } = await api<{ data: Service[] }>(

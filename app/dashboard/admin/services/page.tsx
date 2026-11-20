@@ -44,7 +44,7 @@ function ManageServices() {
 
   useEffect(() => {
     let active = true
-    getServices()
+    getServices({ includeInactive: true })
       .then((data) => {
         if (active) setServices(data)
       })
