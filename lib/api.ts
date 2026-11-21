@@ -44,15 +44,23 @@ async function request<T>(
   retried: boolean
 ): Promise<T> {
   const { body, headers, ...rest } = init
-  const res = await fetch(`${API_URL}${path}`, {
-    credentials: "include",
-    ...rest,
-    headers: {
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-      ...(headers ?? {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      credentials: "include",
+      ...rest,
+      headers: {
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(headers ?? {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    throw new ApiError(
+      "We could not reach the SalonBook server. Check your connection and try again.",
+      0
+    )
+  }
 
   if (res.status === 401 && !retried) {
     const exchanged = await exchangeSession()
@@ -83,8 +91,23 @@ export function api<T>(path: string, init: ApiInit = {}): Promise<T> {
   return request<T>(path, init, false)
 }
 
-/** Uploads a file to the server, which forwards it to ImgBB. */
-export async function uploadImage(file: File): Promise<string> {
+/**
+ * Turns low-level network failures ("Failed to fetch") into a message a salon
+ * customer can act on. Server validation messages pass through untouched.
+ */
+export function friendlyMessage(err: unknown, fallback: string): string {
+  const raw = err instanceof Error ? err.message.trim() : ""
+  if (
+    /failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(
+      raw
+    )
+  ) {
+    return "We could not reach the SalonBook server. Check your connection and try again."
+  }
+  return raw || fallback
+}
+
+/** Uploads a file to the server, which forwards it to ImgBB. */export async function uploadImage(file: File): Promise<string> {
   const form = new FormData()
   form.append("image", file)
 
@@ -95,7 +118,15 @@ export async function uploadImage(file: File): Promise<string> {
       body: form,
     })
 
-  let res = await send()
+  let res: Response
+  try {
+    res = await send()
+  } catch {
+    throw new ApiError(
+      "We could not reach the SalonBook server. Check your connection and try again.",
+      0
+    )
+  }
   if (res.status === 401 && (await exchangeSession())) {
     res = await send()
   }

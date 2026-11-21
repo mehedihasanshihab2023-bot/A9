@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { useAuth } from "@/components/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import { signIn } from "@/lib/auth-client"
-import { API_URL } from "@/lib/api"
+import { API_URL, friendlyMessage } from "@/lib/api"
 
 function GoogleIcon() {
   return (
@@ -85,10 +85,10 @@ function SignInForm() {
       }
       await finishSignIn()
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Sign in failed. Please check your details."
+      const message = friendlyMessage(
+        err,
+        "Sign in failed. Please check your details."
+      )
       setError(message)
       toast.error(message)
       setSubmitting(false)

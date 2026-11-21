@@ -23,7 +23,7 @@ import { toast } from "sonner"
 import { useAuth } from "@/components/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import { signIn, signUp, updateUser } from "@/lib/auth-client"
-import { API_URL, uploadImage } from "@/lib/api"
+import { API_URL, friendlyMessage, uploadImage } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -175,10 +175,10 @@ function SignUpForm() {
       toast.success("Welcome to SalonBook — your account is ready.")
       window.location.assign(redirect ?? "/dashboard")
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Sign up failed. Please review your details and try again."
+      const message = friendlyMessage(
+        err,
+        "Sign up failed. Please review your details and try again."
+      )
       setError(message)
       toast.error(message)
       setSubmitting(false)
