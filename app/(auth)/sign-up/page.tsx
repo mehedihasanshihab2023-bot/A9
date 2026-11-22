@@ -51,16 +51,26 @@ function GoogleIcon() {
   )
 }
 
-function Rule({ passed, children }: { passed: boolean; children: React.ReactNode }) {
+function Rule({
+  passed,
+  invalid,
+  children,
+}: {
+  passed: boolean
+  invalid: boolean
+  children: React.ReactNode
+}) {
   return (
     <li
       className={cn(
         "flex items-center gap-1.5 text-[0.7rem]",
-        passed ? "text-success" : "text-ink/40"
+        passed ? "text-success" : invalid ? "text-danger" : "text-ink/40"
       )}
     >
       {passed ? (
         <Check className="size-3.5" strokeWidth={3} />
+      ) : invalid ? (
+        <X className="size-3.5" strokeWidth={3} />
       ) : (
         <Circle className="size-3" />
       )}
@@ -83,6 +93,7 @@ function SignUpForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
+  const [passwordTouched, setPasswordTouched] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [imageMode, setImageMode] = useState<"upload" | "url">("upload")
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -101,6 +112,14 @@ function SignUpForm() {
     [password]
   )
   const passwordValid = rules.length && rules.upper && rules.lower
+  const missingRules = useMemo(() => {
+    const missing: string[] = []
+    if (!rules.length) missing.push("at least 6 characters")
+    if (!rules.upper) missing.push("one uppercase letter (A–Z)")
+    if (!rules.lower) missing.push("one lowercase letter (a–z)")
+    return missing
+  }, [rules])
+  const showRuleErrors = passwordTouched && password.length > 0 && !passwordValid
 
   useEffect(() => {
     if (!isPending && user) {
@@ -128,9 +147,11 @@ function SignUpForm() {
     setError(null)
 
     if (!passwordValid) {
+      setPasswordTouched(true)
       setError(
-        "Password must be at least 6 characters and include an uppercase and a lowercase letter."
+        `Your password still needs ${missingRules.join(", ")}.`
       )
+      document.getElementById("signup-password")?.focus()
       return
     }
     if (password !== confirm) {
@@ -156,13 +177,16 @@ function SignUpForm() {
         throw new Error(signUpError.message ?? "We could not create your account.")
       }
 
+      // Exchange the fresh Better Auth session for the API JWT cookie before
+      // navigating, so the first dashboard request never races a 401.
+      await fetch(`${API_URL}/auth/token`, {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => undefined)
+
       // The account exists now — upload the chosen photo and attach it.
       if (imageMode === "upload" && imageFile) {
         try {
-          await fetch(`${API_URL}/auth/token`, {
-            method: "POST",
-            credentials: "include",
-          })
           const url = await uploadImage(imageFile)
           await updateUser({ image: url })
         } catch {
@@ -273,13 +297,19 @@ function SignUpForm() {
             <span className="relative block">
               <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink/30" />
               <input
+                id="signup-password"
                 type={showPassword ? "text" : "password"}
                 required
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value)
+                  setPasswordTouched(true)
+                }}
                 placeholder="Min. 6 characters"
                 autoComplete="new-password"
-                className="field pr-10 pl-10"
+                aria-invalid={showRuleErrors}
+                aria-describedby="password-rules"
+                className={cn("field pr-10 pl-10", showRuleErrors && "border-danger/60")}
               />
               <button
                 type="button"
@@ -312,11 +342,26 @@ function SignUpForm() {
           </label>
         </div>
 
-        <ul className="grid gap-1.5 rounded-xl bg-cream/80 px-3 py-2.5 sm:grid-cols-3">
-          <Rule passed={rules.length}>6+ characters</Rule>
-          <Rule passed={rules.upper}>One uppercase</Rule>
-          <Rule passed={rules.lower}>One lowercase</Rule>
+        <ul
+          id="password-rules"
+          className="grid gap-1.5 rounded-xl bg-cream/80 px-3 py-2.5 sm:grid-cols-3"
+        >
+          <Rule passed={rules.length} invalid={showRuleErrors && !rules.length}>
+            6+ characters
+          </Rule>
+          <Rule passed={rules.upper} invalid={showRuleErrors && !rules.upper}>
+            One uppercase
+          </Rule>
+          <Rule passed={rules.lower} invalid={showRuleErrors && !rules.lower}>
+            One lowercase
+          </Rule>
         </ul>
+        {showRuleErrors && (
+          <p role="status" className="text-[0.7rem] text-danger">
+            Add {missingRules.join(" and ")} to continue. Example:
+            <span className="font-mono font-semibold"> Mehedi123</span>
+          </p>
+        )}
 
         {/* Profile image */}
         <div>
